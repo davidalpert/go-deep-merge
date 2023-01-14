@@ -1,0 +1,25 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  default:
+    deps:
+      - help
+    silent: true
+
+  test:
+    desc: run tests
+    cmds:
+      - go test ./...
+    silent: true
+
+  help:
+    desc: list targets
+    cmds:
+      - task --list
+    silent: true
+
