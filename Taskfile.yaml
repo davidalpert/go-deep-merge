@@ -17,6 +17,12 @@ tasks:
       - go test ./...
     silent: true
 
+  autotest:
+    desc: run tests continuously using goconvey's test UI
+    cmds:
+      - goconvey
+    silent: true
+
   help:
     desc: list targets
     cmds:
