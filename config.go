@@ -4,6 +4,8 @@ import (
 	"fmt"
 )
 
+const DEFAULT_FIELD_KNOCKOUT_PREFIX = "--"
+
 type Config struct {
 	// PreserveUnmergeables set to true to skip any unmergeable elements from source
 	PreserveUnmergeables bool
@@ -64,7 +66,7 @@ func NewConfigDeeperMergeBang() *Config {
 }
 
 func NewConfigDeeperMerge() *Config {
-	return NewConfig().PreserveUnmergeable()
+	return NewConfig().WithPreserveUnmergeables(true)
 }
 
 func (c *Config) WithDebug(d bool) *Config {
@@ -76,18 +78,37 @@ func (c *Config) EnableDebug() *Config {
 	return c.WithDebug(true)
 }
 
-func (c *Config) PreserveUnmergeable() *Config {
-	c.PreserveUnmergeables = true
-	return c
-}
-
 func (c *Config) OverwriteUnmergeable() *Config {
 	c.PreserveUnmergeables = false
 	return c
 }
 
+func (c *Config) WithPreserveUnmergeables(b bool) *Config {
+	c.PreserveUnmergeables = b
+	return c
+}
+
 func (c *Config) WithKnockout(prefix string) *Config {
 	c.KnockoutPrefix = &prefix
+	return c
+}
+
+func (c *Config) WithDefaultKnockoutPrefix() *Config {
+	return c.WithKnockout(DEFAULT_FIELD_KNOCKOUT_PREFIX)
+}
+
+func (c *Config) WithOverwriteArrays(b bool) *Config {
+	c.OverwriteArrays = b
+	return c
+}
+
+func (c *Config) WithSortMergedArrays(b bool) *Config {
+	c.SortMergedArrays = b
+	return c
+}
+
+func (c *Config) WithExtendExistingArrays(b bool) *Config {
+	c.ExtendExistingArrays = b
 	return c
 }
 

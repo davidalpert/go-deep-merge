@@ -51,6 +51,7 @@ func deepMerge(src, dest interface{}, o *Config) (interface{}, error) {
 		return src, nil
 	}
 
+	o.writeDebug("%#v", o)
 	switch s := src.(type) {
 	case map[string]interface{}:
 		o.writeDebug("Hashes: %#v :: %#v", s, dest)
@@ -97,6 +98,9 @@ func deepMerge(src, dest interface{}, o *Config) (interface{}, error) {
 				d = append(d, s)
 				return d, nil
 			}
+			if !o.PreserveUnmergeables {
+				return overwriteUnmergeables(s, d, o)
+			}
 			return d, nil
 		default: // else dest isn't a hash, so we overwrite it completely (if permitted)
 			if !o.PreserveUnmergeables {
@@ -105,7 +109,7 @@ func deepMerge(src, dest interface{}, o *Config) (interface{}, error) {
 			// not allowed to overwrite an unmergeable so we keep the destination
 			return dest, nil
 		}
-	case []string:
+	case []string: // TODO: remove and tests should still pass; we don't pass around slices of strings they are all slices of interface{}
 		o.writeDebug("Array<string>: %#v :: %#v", s, dest)
 		if o.OverwriteArrays {
 			o.writeDebug("> overwrite arrays")
@@ -168,15 +172,32 @@ func deepMerge(src, dest interface{}, o *Config) (interface{}, error) {
 					d = combineWithoutDuplicates(s, d, o)
 				}
 				if o.SortMergedArrays {
-					sort.Slice(d, func(i, j int) bool {
-						// TODO: how do we sort a slice of interfaces? cast each one?
-						//return d[i] < d[j]
-						return i < j
-					})
+					o.writeDebug("HERE")
+					if len(d) > 0 {
+						switch d[0].(type) {
+						case int:
+							sort.Slice(d, func(i, j int) bool { return d[i].(int) < d[j].(int) })
+						case int32:
+							sort.Slice(d, func(i, j int) bool { return d[i].(int32) < d[j].(int32) })
+						case int64:
+							sort.Slice(d, func(i, j int) bool { return d[i].(int64) < d[j].(int64) })
+						case float32:
+							sort.Slice(d, func(i, j int) bool { return d[i].(float32) < d[j].(float32) })
+						case float64:
+							sort.Slice(d, func(i, j int) bool { return d[i].(float64) < d[j].(float64) })
+						case string:
+							sort.Slice(d, func(i, j int) bool { return strings.Compare(d[i].(string), d[j].(string)) < 0 })
+						default:
+							sort.Slice(d, func(i, j int) bool {
+								return strings.Compare(fmt.Sprintf("%#v", d[i]), fmt.Sprintf("%#v", d[j])) < 0
+							})
+						}
+					}
 				}
 				return d, nil
+			default:
+				return overwriteUnmergeables(s, d, o)
 			}
-			return src, nil
 		}
 	default:
 		o.writeDebug("Source is neither map nor slice; overwriting dest: %#v :: %#v", src, dest)
@@ -260,21 +281,28 @@ func indexOf(ss []interface{}, s interface{}) int {
 // overwriteUnmergeables returns the result of writing src over top of dest using the configured options
 func overwriteUnmergeables(src, dest interface{}, o *Config) (interface{}, error) {
 	o.writeDebug("Others: %#v :: %#v", src, dest)
-	if o.KnockoutPrefix != nil && !o.PreserveUnmergeables {
+	overwriteUnmergeable := !o.PreserveUnmergeables
+	if o.KnockoutPrefix != nil && overwriteUnmergeable {
+		knockoutPrefix := *o.KnockoutPrefix
 		var srcTemp interface{}
+
+		// use this flag instead of srcTemp to avoid comparing various types
+		knockoutChangedSource := false
 
 		// apply knockout prefix to source before overwriting dest
 		switch s := src.(type) {
 		case string:
-			// remove knockout string from source before overwriting dest
-			srcTemp = strings.TrimLeft(*o.KnockoutPrefix, s)
+			o.writeDebug("remove knockout string from source %#v before overwriting dest", s)
+			srcTemp = strings.TrimLeft(s, knockoutPrefix)
+			knockoutChangedSource = srcTemp != s
 		case []interface{}:
 			// remove all knockout elements before overwriting dest
 			t := make([]interface{}, len(s))
 			for i, v := range s {
 				switch vv := v.(type) {
 				case string:
-					t[i] = strings.TrimLeft(*o.KnockoutPrefix, vv)
+					t[i] = strings.TrimLeft(vv, knockoutPrefix)
+					//knockoutChangedSource = knockoutChangedSource && (t[i] != vv)
 				}
 			}
 			srcTemp = t
@@ -282,13 +310,14 @@ func overwriteUnmergeables(src, dest interface{}, o *Config) (interface{}, error
 			srcTemp = s
 		}
 
-		if srcTemp == src {
+		o.writeDebug("comparing srcTemp %#v with original src %#v", srcTemp, src)
+		if !knockoutChangedSource {
 			// we didn't find a KnockoutPrefix so simply overwrite dest
 			o.writeDebug("%#v -over -> %#v", src, dest)
 			return srcTemp, nil
 		} else {
 			// found a KnockoutPrefix so delete dest
-			o.writeDebug("%#v -over -> %#v", "", dest)
+			o.writeDebug("knocking out %#v -over -> %#v", src, dest)
 			return "", nil
 		}
 	} else if !o.PreserveUnmergeables {
