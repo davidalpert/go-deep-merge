@@ -470,3 +470,120 @@ func TestDeepMerge(t *testing.T) {
 		})
 	}
 }
+
+// TestKnockoutPrefixes contains merge tests looking for correct behavior from
+// specific real-world params/session merges using the custom modifiers built
+// for param/session merges
+func TestKnockoutPrefixes(t *testing.T) {
+	var foo = make(map[string]interface{})
+	foo["id"] = []int32{3, 4, 5}
+
+	tests := []struct {
+		name    string
+		src     string
+		dest    string
+		opt     *Config
+		want    string
+		wantErr bool
+	}{
+		// ko_split: nil
+		{
+			name: "typical params/session style hash with knockout_merge elements",
+			src:  `{"property"=>{"bedroom_count"=>["--1", "2", "3"]}}`,
+			dest: `{"property"=>{"bedroom_count"=>["1", "2", "3"]}}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix(),
+			want: `{"property"=>{"bedroom_count"=>["2", "3"]}}`,
+		},
+		{
+			name: "typical params/session style hash with knockout_merge elements",
+			src:  `{"property"=>{"bedroom_count"=>["--1", "2", "3"]}}`,
+			dest: `{"property"=>{"bedroom_count"=>["3"]}}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix(),
+			want: `{"property"=>{"bedroom_count"=>["3","2"]}}`,
+		},
+		{
+			name: "typical params/session style hash with knockout_merge elements",
+			src:  `{"property"=>{"bedroom_count"=>["--1", "2", "3"]}}`,
+			dest: `{"property"=>{"bedroom_count"=>["4"]}}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix(),
+			want: `{"property"=>{"bedroom_count"=>["4","2","3"]}}`,
+		},
+		{
+			name: "typical params/session style hash with knockout_merge elements",
+			src:  `{"property"=>{"bedroom_count"=>["--1", "2", "3"]}}`,
+			dest: `{"property"=>{"bedroom_count"=>["--1", "4"]}}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix(),
+			want: `{"property"=>{"bedroom_count"=>["4","2","3"]}}`,
+		},
+		{
+			name: "typical params/session style hash with knockout_merge elements",
+			src:  `{"amenity"=>{"id"=>["--1", "--2", "3", "4"]}}`,
+			dest: `{"amenity"=>{"id"=>["1", "2"]}}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix(),
+			want: `{"amenity"=>{"id"=>["3","4"]}}`,
+		},
+
+		// ko_split: ","
+		{
+			name: "typical params/session style hash with knockout_merge elements, with ko_split: \",\"",
+			src:  `{"property"=>{"bedroom_count"=>["--1", "2", "3"]}}`,
+			dest: `{"property"=>{"bedroom_count"=>["1", "2", "3"]}}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{"property"=>{"bedroom_count"=>["2", "3"]}}`,
+		},
+		{
+			name: "typical params/session style hash with knockout_merge elements, with ko_split: \",\"",
+			src:  `{"property"=>{"bedroom_count"=>["--1", "2", "3"]}}`,
+			dest: `{"property"=>{"bedroom_count"=>["3"]}}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{"property"=>{"bedroom_count"=>["3","2"]}}`,
+		},
+		{
+			name: "typical params/session style hash with knockout_merge elements, with ko_split: \",\"",
+			src:  `{"property"=>{"bedroom_count"=>["--1", "2", "3"]}}`,
+			dest: `{"property"=>{"bedroom_count"=>["4"]}}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{"property"=>{"bedroom_count"=>["4","2","3"]}}`,
+		},
+		{
+			name: "typical params/session style hash with knockout_merge elements, with ko_split: \",\"",
+			src:  `{"property"=>{"bedroom_count"=>["--1", "2", "3"]}}`,
+			dest: `{"property"=>{"bedroom_count"=>["--1", "4"]}}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{"property"=>{"bedroom_count"=>["4","2","3"]}}`,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("%d_%s", i, tt.name), func(t *testing.T) {
+			// Arrange
+			s, err := rubyHashToMap(tt.src)
+			if err != nil {
+				t.Errorf("unmarshall source >>%s<< to map: %v", tt.src, err)
+			}
+			d, err := rubyHashToMap(tt.dest)
+			if err != nil {
+				t.Errorf("unmarshall dest >>%s<< to map: %v", tt.dest, err)
+			}
+
+			// Act
+			got, err := MergeWithOptions(s, d, tt.opt)
+
+			// Assert
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Merge() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.want != "" {
+				w, err := rubyHashToMap(tt.want)
+				if err != nil {
+					t.Errorf("unmarshall expectation >>%s<< to map: %v", tt.want, err)
+				}
+				if !reflect.DeepEqual(got, w) {
+					t.Errorf("Merge() got = %v, want %v", got, w)
+				}
+			}
+		})
+	}
+}

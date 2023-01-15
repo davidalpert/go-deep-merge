@@ -144,27 +144,58 @@ func deepMerge(src, dest interface{}, o *Config) (interface{}, error) {
 			return src, nil
 		} else {
 			sourceAllStrings := sliceOfAll(s, isString)
-			if sourceAllStrings {
+			var hasNakedNockoutPrefix = false
+			if sourceAllStrings && arraySplitChar != "" {
 				ss := toStringSlice(s)
-				if arraySplitChar != "" {
-					o.writeDebug("split/join on source: %#v", src)
-					ss = strings.Split(strings.Join(ss, arraySplitChar), arraySplitChar)
-					s = toAbstractSlice(ss)
+				o.writeDebug("split/join on source: %#v", src)
+				ss = strings.Split(strings.Join(ss, arraySplitChar), arraySplitChar)
+				for _, v := range ss {
+					if o.KnockoutPrefix != nil && v == *o.KnockoutPrefix {
+						hasNakedNockoutPrefix = true
+					}
 				}
-			}
-			if o.KnockoutPrefix != nil {
-				// treat as []string => []string ???
+				if hasNakedNockoutPrefix {
+					ss = sliceWithout(ss, *o.KnockoutPrefix)
+				}
+				s = toAbstractSlice(ss)
 			}
 			switch d := dest.(type) {
 			case []interface{}:
+				// if there's a naked knockout_prefix in source, that means we are to truncate dest
+				if o.KnockoutPrefix != nil && hasNakedNockoutPrefix {
+					d = make([]interface{}, 0)
+				}
+
 				destAllStrings := sliceOfAll(s, isString)
-				if destAllStrings {
-					dd := toStringSlice(s)
-					if arraySplitChar != "" {
-						o.writeDebug("split/join on dest: %#v", src)
-						dd = strings.Split(strings.Join(dd, arraySplitChar), arraySplitChar)
-						d = toAbstractSlice(dd)
+				if destAllStrings && arraySplitChar != "" {
+					dd := toStringSlice(d)
+					o.writeDebug("split/join on dest: %#v", src)
+					dd = strings.Split(strings.Join(dd, arraySplitChar), arraySplitChar)
+					d = toAbstractSlice(dd)
+				}
+				if o.KnockoutPrefix != nil {
+					// remove knockout prefix items from both source and dest
+					knockoutPrefix := *o.KnockoutPrefix
+					sWithoutKnockoutItems := make([]interface{}, 0)
+					for _, koItem := range s {
+						isKnockoutItem := false
+						switch item := koItem.(type) {
+						case string:
+							if strings.HasPrefix(item, knockoutPrefix) {
+								isKnockoutItem = true
+								itemToKnockout := strings.TrimPrefix(item, knockoutPrefix)
+								o.writeDebug("found %#v ==> knocking out: %#v", koItem, itemToKnockout)
+								dd := toStringSlice(d)
+								dd = sliceWithout(dd, item)
+								dd = sliceWithout(dd, itemToKnockout)
+								d = toAbstractSlice(dd)
+							}
+						}
+						if !isKnockoutItem {
+							sWithoutKnockoutItems = append(sWithoutKnockoutItems, koItem)
+						}
 					}
+					s = sWithoutKnockoutItems
 				}
 
 				sourceAllHashes := allHashes(s)
