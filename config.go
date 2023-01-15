@@ -112,7 +112,7 @@ func (c *Config) WithExtendExistingArrays(b bool) *Config {
 	return c
 }
 
-func (c *Config) UnpackArraysWith(sep string) *Config {
+func (c *Config) WithUnpackArrays(sep string) *Config {
 	c.UnpackArrays = &sep
 	return c
 }

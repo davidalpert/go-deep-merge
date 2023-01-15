@@ -109,47 +109,67 @@ func deepMerge(src, dest interface{}, o *Config) (interface{}, error) {
 			// not allowed to overwrite an unmergeable so we keep the destination
 			return dest, nil
 		}
-	case []string: // TODO: remove and tests should still pass; we don't pass around slices of strings they are all slices of interface{}
-		o.writeDebug("Array<string>: %#v :: %#v", s, dest)
-		if o.OverwriteArrays {
-			o.writeDebug("> overwrite arrays")
-			return src, nil
-		} else {
-			// if we are instructed, join/split any source arrays before processing
-			if arraySplitChar != "" {
-				o.writeDebug("split/join on source: %#v", src)
-				s = strings.Split(strings.Join(s, arraySplitChar), arraySplitChar)
-			}
-			switch d := dest.(type) {
-			case []string:
-				// if we are instructed, join/split any dest arrays before processing
-				if arraySplitChar != "" {
-					o.writeDebug("split/join on dest: %#v", src)
-					d = strings.Split(strings.Join(d, arraySplitChar), arraySplitChar)
-				}
-				if o.KnockoutPrefix != nil {
-					// if there's a naked knockout_prefix in source, that means we are to truncate dest
-					if indexOfString(s, *o.KnockoutPrefix) > -1 {
-						return sliceWithout(s, *o.KnockoutPrefix), nil
-					}
-					// TODO: merge arrays
-				}
-			}
-			return src, nil
-		}
+	//case []string: // TODO: remove and tests should still pass; we don't pass around slices of strings they are all slices of interface{}
+	//	o.writeDebug("Array<string>: %#v :: %#v", s, dest)
+	//	if o.OverwriteArrays {
+	//		o.writeDebug("> overwrite arrays")
+	//		return src, nil
+	//	} else {
+	//		// if we are instructed, join/split any source arrays before processing
+	//		if arraySplitChar != "" {
+	//			o.writeDebug("split/join on source: %#v", src)
+	//			s = strings.Split(strings.Join(s, arraySplitChar), arraySplitChar)
+	//		}
+	//		switch d := dest.(type) {
+	//		case []string:
+	//			// if we are instructed, join/split any dest arrays before processing
+	//			if arraySplitChar != "" {
+	//				o.writeDebug("split/join on dest: %#v", src)
+	//				d = strings.Split(strings.Join(d, arraySplitChar), arraySplitChar)
+	//			}
+	//			if o.KnockoutPrefix != nil {
+	//				// if there's a naked knockout_prefix in source, that means we are to truncate dest
+	//				if indexOfString(s, *o.KnockoutPrefix) > -1 {
+	//					return sliceWithout(s, *o.KnockoutPrefix), nil
+	//				}
+	//				// TODO: merge arrays
+	//			}
+	//		}
+	//		return src, nil
+	//	}
 	case []interface{}:
 		o.writeDebug("Arrays: %#v :: %#v", s, dest)
 		if o.OverwriteArrays {
 			o.writeDebug("> overwrite arrays")
 			return src, nil
 		} else {
+			sourceAllStrings := sliceOfAll(s, isString)
+			if sourceAllStrings {
+				ss := toStringSlice(s)
+				if arraySplitChar != "" {
+					o.writeDebug("split/join on source: %#v", src)
+					ss = strings.Split(strings.Join(ss, arraySplitChar), arraySplitChar)
+					s = toAbstractSlice(ss)
+				}
+			}
 			if o.KnockoutPrefix != nil {
 				// treat as []string => []string ???
 			}
 			switch d := dest.(type) {
 			case []interface{}:
+				destAllStrings := sliceOfAll(s, isString)
+				if destAllStrings {
+					dd := toStringSlice(s)
+					if arraySplitChar != "" {
+						o.writeDebug("split/join on dest: %#v", src)
+						dd = strings.Split(strings.Join(dd, arraySplitChar), arraySplitChar)
+						d = toAbstractSlice(dd)
+					}
+				}
+
 				sourceAllHashes := allHashes(s)
 				destAllHashes := allHashes(d)
+
 				if sourceAllHashes && destAllHashes && o.MergeHashArrays {
 					list := make([]interface{}, 0)
 					for i, dv := range d {
@@ -225,13 +245,26 @@ func combineWithoutDuplicates(s []interface{}, d []interface{}, o *Config) []int
 	return d
 }
 
-// allHashes returns true when all elements of the items slice are map[string]interface{}
-func allHashes(items []interface{}) bool {
+func sliceOfAll(items []interface{}, testItem func(v interface{}) bool) bool {
 	var trueForAll = true
 	for _, v := range items {
-		trueForAll = isHash(v) && trueForAll
+		trueForAll = testItem(v) && trueForAll
 	}
 	return trueForAll
+}
+
+func isString(item interface{}) bool {
+	switch item.(type) {
+	case string:
+		return true
+	default:
+		return false
+	}
+}
+
+// allHashes returns true when all elements of the items slice are map[string]interface{}
+func allHashes(items []interface{}) bool {
+	return sliceOfAll(items, isHash)
 }
 
 func isHash(item interface{}) bool {

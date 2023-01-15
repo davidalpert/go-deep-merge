@@ -144,14 +144,14 @@ func TestDeepMerge(t *testing.T) {
 			name: "test merging an hash w/array into blank hash",
 			src:  `{'id' => '2'}`,
 			dest: `{}`,
-			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().UnpackArraysWith(","),
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
 			want: `{'id' => '2'}`,
 		},
 		{
 			name: "test merging an hash w/array into blank hash",
 			src:  `{'region' => {'id' => ['227', '2']}}`,
 			dest: `{}`,
-			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().UnpackArraysWith(","),
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
 			want: `{'region' => {'id' => ['227', '2']}}`,
 		},
 		{
@@ -405,6 +405,36 @@ func TestDeepMerge(t *testing.T) {
 			opt:     NewConfigDeeperMergeBang().WithPreserveUnmergeables(true),
 			wantErr: false,
 		},
+		{
+			// wierd edge case where hash keys are actually arrays; I've converted them to string constants for this test
+			name: "hash holding arrays of arrays",
+			src:  `{"[\"1\", \"2\", \"3\"]" => ["1", "2"]}`,
+			dest: `{"[\"4\", \"5\"]" => ["3"]}`,
+			opt:  NewConfigDeeperMergeBang(),
+			want: `{"[\"1\", \"2\", \"3\"]" => ["1", "2"], "[\"4\", \"5\"]" => ["3"]}`,
+		},
+		{
+			name: "test merging of hash with blank hash, and make sure that source array split still functions",
+			src:  `{'property' => {'bedroom_count' => ["1", "2,3"]}}`,
+			dest: `{}`,
+			opt:  NewConfigDeeperMergeBang().WithKnockout(DEFAULT_FIELD_KNOCKOUT_PREFIX).WithUnpackArrays(","),
+			want: `{'property' => {'bedroom_count' => ["1", "2", "3"]}}`,
+		},
+		{
+			name: "test merging of hash with blank hash, and make sure that source array split does not function when turned off",
+			src:  `{'property' => {'bedroom_count' => ["1", "2,3"]}}`,
+			dest: `{}`,
+			opt:  NewConfigDeeperMergeBang().WithKnockout(DEFAULT_FIELD_KNOCKOUT_PREFIX),
+			want: `{'property' => {'bedroom_count' => ["1", "2,3"]}}`,
+		},
+		{
+			name: "test merging into a blank hash with overwrite_unmergeables turned on",
+			src:  `{"action" => "browse", "controller" => "results"}`,
+			dest: `{}`,
+			// DeepMerge::deep_merge!(hash_src, hash_dst,{:overwrite_unmergeables = > true, :knockout_prefix = > FIELD_KNOCKOUT_PREFIX, :unpack_arrays = > ","})
+			opt:  NewConfigDeeperMergeBang().WithPreserveUnmergeables(false).WithKnockout(DEFAULT_FIELD_KNOCKOUT_PREFIX).WithUnpackArrays(","),
+			want: `{"action" => "browse", "controller" => "results"}`,
+		},
 	}
 
 	for i, tt := range tests {
@@ -434,7 +464,7 @@ func TestDeepMerge(t *testing.T) {
 					t.Errorf("unmarshall expectation >>%s<< to map: %v", tt.want, err)
 				}
 				if !reflect.DeepEqual(got, w) {
-					t.Errorf("Merge() got = %v, want %v", got, tt.want)
+					t.Errorf("Merge() got = %v, want %v", got, w)
 				}
 			}
 		})

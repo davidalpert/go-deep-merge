@@ -1,12 +1,10 @@
 package DeepMerge
 
-import "fmt"
-
 // toStringSlice converts a slice of unknown types to a slice of their string representations
 func toStringSlice(items []interface{}) []string {
 	var ss = make([]string, len(items))
 	for i, v := range items {
-		ss[i] = fmt.Sprintf("%s", v)
+		ss[i] = v.(string)
 	}
 	return ss
 }
