@@ -107,8 +107,23 @@ func (c *Config) WithSortMergedArrays(b bool) *Config {
 	return c
 }
 
+func (c *Config) WithMergeHashArrays(b bool) *Config {
+	c.MergeHashArrays = b
+	return c
+}
+
+func (c *Config) WithKeepArrayDuplicates(b bool) *Config {
+	c.KeepArrayDuplicates = b
+	return c
+}
+
 func (c *Config) WithExtendExistingArrays(b bool) *Config {
 	c.ExtendExistingArrays = b
+	return c
+}
+
+func (c *Config) WithMergeNilValues(b bool) *Config {
+	c.MergeNilValues = b
 	return c
 }
 
@@ -120,7 +135,7 @@ func (c *Config) WithUnpackArrays(sep string) *Config {
 // writeDebug conditionally writes a formatted message only when o.Debug is true
 func (c *Config) writeDebug(f string, a ...interface{}) {
 	if c.Debug {
-		fmt.Println(c.DebugIndent + fmt.Sprintf(f, a...))
+		fmt.Printf(fmt.Sprintf(c.DebugIndent+f+"\n", a...))
 	}
 }
 

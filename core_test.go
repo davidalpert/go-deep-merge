@@ -967,3 +967,140 @@ func TestEdges(t *testing.T) {
 		})
 	}
 }
+
+// TestMergeHashArrays contains tests for "merge_hash_arrays" option
+func TestMergeHashArrays(t *testing.T) {
+	tests := []struct {
+		name    string
+		src     string
+		dest    string
+		opt     *Config
+		want    string
+		wantErr bool
+	}{
+		{
+			name: `two hash arrays of equal length get merged item by item`,
+			src:  `{"item" => [{"1" => "3"}]}`,
+			dest: `{"item" => [{"3" => "5"}]}`,
+			opt:  NewConfigDeeperMergeBang().WithMergeHashArrays(true),
+			want: `{"item" => [{"3" => "5", "1" => "3"}]}`,
+		},
+		{
+			name: `hash array with two items into hash array with one item`,
+			src:  `{"item" => [{"1" => "3"}, {"2" => "4"}]}`,
+			dest: `{"item" => [{"3" => "5"}]}`,
+			opt:  NewConfigDeeperMergeBang().WithMergeHashArrays(true),
+			want: `{"item" => [{"3" => "5", "1" => "3"}, {"2" => "4"}]}`,
+		},
+		{
+			name: `hash array with one items into hash array with two items`,
+			src:  `{"item" => [{"1" => "3"}]}`,
+			dest: `{"item" => [{"3" => "5"}, {"2" => "4"}]}`,
+			opt:  NewConfigDeeperMergeBang().WithMergeHashArrays(true),
+			want: `{"item" => [{"3" => "5", "1" => "3"}, {"2" => "4"}]}`,
+		},
+		{
+			name: `if arrays contain non-hash objects, the :merge_hash_arrays option has no effect.`,
+			src:  `{"item" => [{"1" => "3"}, "str"]}`, // # contains "str", non-hash
+			dest: `{"item" => [{"3" => "5"}]}`,
+			opt:  NewConfigDeeperMergeBang().WithMergeHashArrays(true),
+			want: `{"item" => [{"3" => "5"}, {"1" => "3"}, "str"]}`,
+		},
+		{
+			name: `Merging empty strings`,
+			src:  `{"item" => "" }`,
+			dest: `{"item" => "hello" }`,
+			opt:  NewConfigDeeperMergeBang(),
+			want: `{"item" => ""}`,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("%d_%s", i, tt.name), func(t *testing.T) {
+			// Arrange
+			s, err := rubyHashToMap(tt.src)
+			assert.NoError(t, err, "unmarshall source >>%s<< to map: %v", tt.src, err)
+			d, err := rubyHashToMap(tt.dest)
+			assert.NoError(t, err, "unmarshall dest >>%s<< to map: %v", tt.dest, err)
+
+			// Act
+			got, err := MergeWithOptions(s, d, tt.opt)
+
+			// Assert
+			if (err != nil) != tt.wantErr {
+				assert.FailNow(t, "Merge() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.want != "" {
+				w, err := rubyHashToMap(tt.want)
+				assert.NoError(t, err, "unmarshall expectation >>%s<< to map: %v", tt.want, err)
+				assert.Equal(t, w, got, "Merge() got = %v, want %v", got, w)
+			}
+		})
+	}
+}
+
+// TestKeepArrayDuplicates contains tests for "keep_array_duplicates" option
+func TestKeepArrayDuplicates(t *testing.T) {
+	tests := []struct {
+		name    string
+		src     string
+		dest    string
+		opt     *Config
+		want    string
+		wantErr bool
+	}{
+		{
+			name: `{"item" => ["2", "3"]}`,
+			src:  `{"item" => ["2", "3"]}`,
+			dest: `{"item" => ["1", "2"]}`,
+			opt:  NewConfigDeeperMergeBang().WithKeepArrayDuplicates(true),
+			want: `{"item" => ["1", "2", "2", "3"]}`,
+		},
+		{
+			name: `For deep_merge Issue #34 - keep_array_duplicates against a nil src doesn't do a recursive merge`,
+			src:  `{"item" => ["2", "3"]}`,
+			dest: `{}`,
+			opt:  NewConfigDeeperMergeBang().WithKeepArrayDuplicates(true),
+			want: `{"item" => ["2", "3"]}`,
+		},
+		{
+			name: `Don't merge nil values by default`,
+			src:  `{"item" => nil}`,
+			dest: `{"item" => "existing"}`,
+			opt:  NewConfigDeeperMergeBang(),
+			want: `{"item" => "existing"}`,
+		},
+		{
+			name: `Merge nil values via an explicit: :merge_nil_values => true`,
+			src:  `{"item" => nil}`,
+			dest: `{"item" => "existing"}`,
+			opt:  NewConfigDeeperMergeBang().WithMergeNilValues(true),
+			want: `{"item" => nil}`,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("%d_%s", i, tt.name), func(t *testing.T) {
+			// Arrange
+			s, err := rubyHashToMap(tt.src)
+			assert.NoError(t, err, "unmarshall source >>%s<< to map: %v", tt.src, err)
+			d, err := rubyHashToMap(tt.dest)
+			assert.NoError(t, err, "unmarshall dest >>%s<< to map: %v", tt.dest, err)
+
+			// Act
+			got, err := MergeWithOptions(s, d, tt.opt)
+
+			// Assert
+			if (err != nil) != tt.wantErr {
+				assert.FailNow(t, "Merge()", "error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.want != "" {
+				w, err := rubyHashToMap(tt.want)
+				assert.NoError(t, err, "unmarshall expectation >>%s<< to map: %v", tt.want, err)
+				assert.Equal(t, w, got, "Merge() got = %v, want %v", got, w)
+			}
+		})
+	}
+}

@@ -76,13 +76,18 @@ func deepMerge(src, dest interface{}, o *Config) (interface{}, error) {
 						if o.KeepArrayDuplicates {
 							// note: in this case the merge will be additive, rather than a bounded set, so we can't simply merge src with itself
 							// We need to merge src with an empty array
-							return deepMerge(sv, make([]interface{}, 0), o.copyWithIncreasedDebugIndent())
+							if r, err := deepMerge(sv, make([]interface{}, 0), o.copyWithIncreasedDebugIndent()); err != nil {
+								return nil, err
+							} else {
+								d[sk] = r
+							}
+						} else {
+							r, err := deepMerge(sv, src_dup, o.copyWithIncreasedDebugIndent())
+							if err != nil {
+								return nil, err
+							}
+							d[sk] = r
 						}
-						r, err := deepMerge(sv, src_dup, o.copyWithIncreasedDebugIndent())
-						if err != nil {
-							return nil, err
-						}
-						d[sk] = r
 					default:
 						r, err := deepMerge(sv, src_dup, o.copyWithIncreasedDebugIndent())
 						if err != nil {
@@ -174,20 +179,26 @@ func deepMerge(src, dest interface{}, o *Config) (interface{}, error) {
 				sourceAllHashes := allHashes(s)
 				destAllHashes := allHashes(d)
 
-				if sourceAllHashes && destAllHashes && o.MergeHashArrays {
+				if o.MergeHashArrays && sourceAllHashes && destAllHashes {
+					o.writeDebug("merge hashes in lists")
 					list := make([]interface{}, 0)
 					for i, dv := range d {
 						if i < len(s) {
 							sv := s[i]
+							o.writeDebug("- index %d: %#v :: %#v", i, sv, dv)
 							if r, err := deepMerge(sv, dv, o.copyWithIncreasedDebugIndent()); err != nil {
 								return nil, err
 							} else {
 								list = append(list, r)
 							}
+						} else {
+							// no source item at this index so preserve dest item
+							list = append(list, dv)
 						}
 					}
-					if len(s) < len(d) {
-						list = append(list, s[len(d)])
+					if len(s) > len(d) {
+						// source has more items than dest; append the rest
+						list = append(list, s[len(d):]...)
 					}
 					d = list
 				} else if o.KeepArrayDuplicates {
