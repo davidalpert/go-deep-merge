@@ -109,34 +109,6 @@ func deepMerge(src, dest interface{}, o *Config) (interface{}, error) {
 			// not allowed to overwrite an unmergeable so we keep the destination
 			return dest, nil
 		}
-	//case []string: // TODO: remove and tests should still pass; we don't pass around slices of strings they are all slices of interface{}
-	//	o.writeDebug("Array<string>: %#v :: %#v", s, dest)
-	//	if o.OverwriteArrays {
-	//		o.writeDebug("> overwrite arrays")
-	//		return src, nil
-	//	} else {
-	//		// if we are instructed, join/split any source arrays before processing
-	//		if arraySplitChar != "" {
-	//			o.writeDebug("split/join on source: %#v", src)
-	//			s = strings.Split(strings.Join(s, arraySplitChar), arraySplitChar)
-	//		}
-	//		switch d := dest.(type) {
-	//		case []string:
-	//			// if we are instructed, join/split any dest arrays before processing
-	//			if arraySplitChar != "" {
-	//				o.writeDebug("split/join on dest: %#v", src)
-	//				d = strings.Split(strings.Join(d, arraySplitChar), arraySplitChar)
-	//			}
-	//			if o.KnockoutPrefix != nil {
-	//				// if there's a naked knockout_prefix in source, that means we are to truncate dest
-	//				if indexOfString(s, *o.KnockoutPrefix) > -1 {
-	//					return sliceWithout(s, *o.KnockoutPrefix), nil
-	//				}
-	//				// TODO: merge arrays
-	//			}
-	//		}
-	//		return src, nil
-	//	}
 	case []interface{}:
 		o.writeDebug("Arrays: %#v :: %#v", s, dest)
 		if o.OverwriteArrays {
@@ -144,17 +116,17 @@ func deepMerge(src, dest interface{}, o *Config) (interface{}, error) {
 			return src, nil
 		} else {
 			sourceAllStrings := sliceOfAll(s, isString)
-			var hasNakedNockoutPrefix = false
+			var hasNakedKnockoutPrefix = false
 			if sourceAllStrings && arraySplitChar != "" && len(s) > 0 {
 				ss := toStringSlice(s)
 				o.writeDebug("split/join on source: %#v", src)
 				ss = strings.Split(strings.Join(ss, arraySplitChar), arraySplitChar)
 				for _, v := range ss {
 					if o.KnockoutPrefix != nil && v == *o.KnockoutPrefix {
-						hasNakedNockoutPrefix = true
+						hasNakedKnockoutPrefix = true
 					}
 				}
-				if hasNakedNockoutPrefix {
+				if hasNakedKnockoutPrefix {
 					ss = sliceWithout(ss, *o.KnockoutPrefix)
 				}
 				s = toAbstractSlice(ss)
@@ -162,7 +134,7 @@ func deepMerge(src, dest interface{}, o *Config) (interface{}, error) {
 			switch d := dest.(type) {
 			case []interface{}:
 				// if there's a naked knockout_prefix in source, that means we are to truncate dest
-				if o.KnockoutPrefix != nil && hasNakedNockoutPrefix {
+				if o.KnockoutPrefix != nil && hasNakedKnockoutPrefix {
 					d = make([]interface{}, 0)
 					o.writeDebug("source has naked knockout prefix; truncating destination to: %#v", d)
 				}
@@ -335,8 +307,10 @@ func indexOfString(ss []string, s string) int {
 }
 
 func indexOf(ss []interface{}, s interface{}) int {
+	// compare detailed string representations
+	strS := fmt.Sprintf("%#v", s)
 	for i, v := range ss {
-		if v == s {
+		if fmt.Sprintf("%#v", v) == strS {
 			return i
 		}
 	}
@@ -345,7 +319,7 @@ func indexOf(ss []interface{}, s interface{}) int {
 
 // overwriteUnmergeables returns the result of writing src over top of dest using the configured options
 func overwriteUnmergeables(src, dest interface{}, o *Config) (interface{}, error) {
-	o.writeDebug("Others: %#v :: %#v", src, dest)
+	o.writeDebug("Overwrite: %#v :: %#v", src, dest)
 	overwriteUnmergeable := !o.PreserveUnmergeables
 	if o.KnockoutPrefix != nil && overwriteUnmergeable {
 		knockoutPrefix := *o.KnockoutPrefix
@@ -362,11 +336,13 @@ func overwriteUnmergeables(src, dest interface{}, o *Config) (interface{}, error
 			knockoutChangedSource = srcTemp != s
 		case []interface{}:
 			// remove all knockout elements before overwriting dest
-			t := make([]interface{}, len(s))
-			for i, v := range s {
+			t := make([]interface{}, 0)
+			for _, v := range s {
 				switch vv := v.(type) {
 				case string:
-					t[i] = strings.TrimLeft(vv, knockoutPrefix)
+					if !strings.HasPrefix(vv, knockoutPrefix) {
+						t = append(t, vv)
+					}
 					//knockoutChangedSource = knockoutChangedSource && (t[i] != vv)
 				}
 			}

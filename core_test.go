@@ -752,3 +752,218 @@ func TestKnockoutPrefixes(t *testing.T) {
 		})
 	}
 }
+
+// TestEdges contains some tests marked "edge test" and "Example"
+func TestEdges(t *testing.T) {
+	tests := []struct {
+		name    string
+		src     string
+		dest    string
+		opt     *Config
+		want    string
+		wantErr bool
+	}{
+		{
+			name: `edge test: make sure that when we turn off knockout_prefix that all values are processed correctly`,
+			src:  `{"region" => {'ids' => ["7", "--", "2", "6,8"]}}`,
+			dest: `{"region"=>{"ids"=>["1", "2", "3", "4"], 'id'=>'11'}}`,
+			opt:  NewConfigDeeperMergeBang().WithUnpackArrays(","),
+			want: `{'region' => {'ids' => ["1", "2", "3", "4", "7", "--", "6", "8"], 'id'=>'11'}}`,
+		},
+		{
+			name: `edge test 2: make sure that when we turn off source array split that all values are processed correctly`,
+			src:  `{"region" => {'ids' => ["7", "3", "--", "6,8"]}}`,
+			dest: `{"region"=>{"ids"=>["1", "2", "3", "4"], 'id'=>'11'}}`,
+			opt:  NewConfigDeeperMergeBang(),
+			want: `{'region' => {'ids' => ["1", "2", "3", "4", "7", "--", "6,8"], 'id'=>'11'}}`,
+		},
+		{
+			name: `Example: src = {'key' => "--1"}, dst = {'key' => "1"} -> merges to {'key' => ""}`,
+			src:  `{"amenity"=>"--1"}`,
+			dest: `{"amenity"=>"1"}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix(),
+			want: `{"amenity"=>""}`,
+		},
+		{
+			name: `Example: src = {'key' => "--1"}, dst = {'key' => "2"} -> merges to {'key' => ""}`,
+			src:  `{"amenity"=>"--1"}`,
+			dest: `{"amenity"=>"2"}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix(),
+			want: `{"amenity"=>""}`,
+		},
+		{
+			name: `Example: src = {'key' => "--1"}, dst = {'key' => "1"} -> merges to {'key' => ""}`,
+			src:  `{"amenity"=>["--1"]}`,
+			dest: `{"amenity"=>"1"}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix(),
+			want: `{"amenity"=>[]}`,
+		},
+		{
+			name: `Example: src = {'key' => "--1"}, dst = {'key' => "1"} -> merges to {'key' => ""}`,
+			src:  `{"amenity"=>["--1"]}`,
+			dest: `{"amenity"=>["1"]}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{"amenity"=>[]}`,
+		},
+		{
+			name: `Example: src = {'key' => "--1"}, dst = {'key' => "1"} -> merges to {'key' => ""}`,
+			src:  `{"amenity"=>"--1"}`,
+			dest: `{}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{"amenity"=>""}`,
+		},
+		{
+			name: `Example: src = {'key' => "--1"}, dst = {'key' => "1"} -> merges to {'key' => ""}`,
+			src:  `{"amenity"=>"--1"}`,
+			dest: `{"amenity"=>["1"]}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{"amenity"=>""}`,
+		},
+		{
+			name: `are unmerged hashes passed unmodified w/out :unpack_arrays?`,
+			src:  `{"amenity"=>{"id"=>["26,27"]}}`,
+			dest: `{}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix(),
+			want: `{"amenity"=>{"id"=>["26,27"]}}`,
+		},
+		{
+			name: `hash should be merged`,
+			src:  `{"amenity"=>{"id"=>["26,27"]}}`,
+			dest: `{}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{"amenity"=>{"id"=>["26","27"]}}`,
+		},
+		{
+			name: `hashes with knockout values are suppressed`,
+			src:  `{"amenity"=>{"id"=>["--26,--27,28"]}}`,
+			dest: `{}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{"amenity"=>{"id"=>["28"]}}`,
+		},
+		{
+			name: `{'region' =>{'ids'=>['--']}, 'query_uuid' => 'zzz'}`,
+			src:  `{'region' =>{'ids'=>['--']}, 'query_uuid' => 'zzz'}`,
+			dest: `{'region' =>{'ids'=>['227','2','3','3']}, 'query_uuid' => 'zzz'}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{'region' =>{'ids'=>[]}, 'query_uuid' => 'zzz'}`,
+		},
+		{
+			name: `{'region' =>{'ids'=>['--']}, 'query_uuid' => 'zzz'}`,
+			src:  `{'region' =>{'ids'=>['--']}, 'query_uuid' => 'zzz'}`,
+			dest: `{'region' =>{'ids'=>['227','2','3','3'], 'id' => '3'}, 'query_uuid' => 'zzz'}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{'region' =>{'ids'=>[], 'id'=>'3'}, 'query_uuid' => 'zzz'}`,
+		},
+		{
+			name: `{'region' =>{'ids'=>['--']}, 'query_uuid' => 'zzz'}`,
+			src:  `{'region' =>{'ids'=>['--']}, 'query_uuid' => 'zzz'}`,
+			dest: `{'region' =>{'muni_city_id' => '2244', 'ids'=>['227','2','3','3'], 'id'=>'3'}, 'query_uuid' => 'zzz'}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{'region' =>{'muni_city_id' => '2244', 'ids'=>[], 'id'=>'3'}, 'query_uuid' => 'zzz'}`,
+		},
+		{
+			name: `{'region' =>{'ids'=>['--'], 'id' => '5'}, 'query_uuid' => 'zzz'}`,
+			src:  `{'region' =>{'ids'=>['--'], 'id' => '5'}, 'query_uuid' => 'zzz'}`,
+			dest: `{'region' =>{'muni_city_id' => '2244', 'ids'=>['227','2','3','3'], 'id'=>'3'}, 'query_uuid' => 'zzz'}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{'region' =>{'muni_city_id' => '2244', 'ids'=>[], 'id'=>'5'}, 'query_uuid' => 'zzz'}`,
+		},
+		{
+			name: `{'region' =>{'ids'=>['--', '227'], 'id' => '5'}, 'query_uuid' => 'zzz'}`,
+			src:  `{'region' =>{'ids'=>['--', '227'], 'id' => '5'}, 'query_uuid' => 'zzz'}`,
+			dest: `{'region' =>{'muni_city_id' => '2244', 'ids'=>['227','2','3','3'], 'id'=>'3'}, 'query_uuid' => 'zzz'}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{'region' =>{'muni_city_id' => '2244', 'ids'=>['227'], 'id'=>'5'}, 'query_uuid' => 'zzz'}`,
+		},
+		{
+			name: `{'region' =>{'muni_city_id' => '--', 'ids'=>'--', 'id'=>'5'}, 'query_uuid' => 'zzz'}`,
+			src:  `{'region' =>{'muni_city_id' => '--', 'ids'=>'--', 'id'=>'5'}, 'query_uuid' => 'zzz'}`,
+			dest: `{'region' =>{'muni_city_id' => '2244', 'ids'=>['227','2','3','3'], 'id'=>'3'}, 'query_uuid' => 'zzz'}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{'region' =>{'muni_city_id' => '', 'ids'=>'', 'id'=>'5'}, 'query_uuid' => 'zzz'}`,
+		},
+		{
+			name: `{'region' =>{'muni_city_id' => '--', 'ids'=>['--'], 'id'=>'5'}, 'query_uuid' => 'zzz'}`,
+			src:  `{'region' =>{'muni_city_id' => '--', 'ids'=>['--'], 'id'=>'5'}, 'query_uuid' => 'zzz'}`,
+			dest: `{'region' =>{'muni_city_id' => '2244', 'ids'=>['227','2','3','3'], 'id'=>'3'}, 'query_uuid' => 'zzz'}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{'region' =>{'muni_city_id' => '', 'ids'=>[], 'id'=>'5'}, 'query_uuid' => 'zzz'}`,
+		},
+		{
+			name: `{'region' =>{'muni_city_id' => '--', 'ids'=>['--','227'], 'id'=>'5'}, 'query_uuid' => 'zzz'}`,
+			src:  `{'region' =>{'muni_city_id' => '--', 'ids'=>['--','227'], 'id'=>'5'}, 'query_uuid' => 'zzz'}`,
+			dest: `{'region' =>{'muni_city_id' => '2244', 'ids'=>['227','2','3','3'], 'id'=>'3'}, 'query_uuid' => 'zzz'}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{'region' =>{'muni_city_id' => '', 'ids'=>['227'], 'id'=>'5'}, 'query_uuid' => 'zzz'}`,
+		},
+		{
+			name: `{"muni_city_id"=>"--", "id"=>""}`,
+			src:  `{"muni_city_id"=>"--", "id"=>""}`,
+			dest: `{"muni_city_id"=>"", "id"=>""}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{"muni_city_id"=>"", "id"=>""}`,
+		},
+		{
+			name: `{"region"=>{"muni_city_id"=>"--", "id"=>""}}`,
+			src:  `{"region"=>{"muni_city_id"=>"--", "id"=>""}}`,
+			dest: `{"region"=>{"muni_city_id"=>"", "id"=>""}}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{"region"=>{"muni_city_id"=>"", "id"=>""}}`,
+		},
+		{
+			name: `{"query_uuid"=>"a0dc3c84-ec7f-6756-bdb0-fff9157438ab", "url_regions"=>[], "region"=>{"muni_city_id"=>"--", "id"=>""}, "property"=>{"property_type_id"=>"", "search_rate_min"=>"", "search_rate_max"=>""}, "task"=>"search", "run_query"=>"Search"}`,
+			src:  `{"query_uuid"=>"a0dc3c84-ec7f-6756-bdb0-fff9157438ab", "url_regions"=>[], "region"=>{"muni_city_id"=>"--", "id"=>""}, "property"=>{"property_type_id"=>"", "search_rate_min"=>"", "search_rate_max"=>""}, "task"=>"search", "run_query"=>"Search"}`,
+			dest: `{"query_uuid"=>"a0dc3c84-ec7f-6756-bdb0-fff9157438ab", "url_regions"=>[], "region"=>{"muni_city_id"=>"", "id"=>""}, "property"=>{"property_type_id"=>"", "search_rate_min"=>"", "search_rate_max"=>""}, "task"=>"search", "run_query"=>"Search"}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","),
+			want: `{"query_uuid"=>"a0dc3c84-ec7f-6756-bdb0-fff9157438ab", "url_regions"=>[], "region"=>{"muni_city_id"=>"", "id"=>""}, "property"=>{"property_type_id"=>"", "search_rate_min"=>"", "search_rate_max"=>""}, "task"=>"search", "run_query"=>"Search"}`,
+		},
+		{
+			name: `hash of array of hashes`,
+			src:  `{"item" => [{"1" => "3"}, {"2" => "4"}]}`,
+			dest: `{"item" => [{"3" => "5"}]}`,
+			opt:  NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().EnableDebug(),
+			want: `{"item" => [{"3" => "5"}, {"1" => "3"}, {"2" => "4"}]}`,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("%d_%s", i, tt.name), func(t *testing.T) {
+			// Arrange
+			s, err := rubyHashToMap(tt.src)
+			assert.NoError(t, err, "unmarshall source >>%s<< to map: %v", tt.src, err)
+			d, err := rubyHashToMap(tt.dest)
+			assert.NoError(t, err, "unmarshall dest >>%s<< to map: %v", tt.dest, err)
+
+			// Act
+			got, err := MergeWithOptions(s, d, tt.opt)
+
+			// Assert
+			if (err != nil) != tt.wantErr {
+				assert.FailNow(t, "Merge() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.want != "" {
+				w, err := rubyHashToMap(tt.want)
+				assert.NoError(t, err, "unmarshall expectation >>%s<< to map: %v", tt.want, err)
+				assert.Equal(t, w, got, "Merge() got = %v, want %v", got, w)
+			}
+
+			// special case of a second merge
+			if tt.name == "hash should be merged" {
+				t.Run("second merge of same values should result in no change in output", func(t *testing.T) {
+					//assert.FailNow(t, "here")
+
+					hashParams, err := rubyHashToMap(`{"amenity"=>{"id"=>["26,27"]}}`)
+					assert.NoError(t, err, tt.name+" part 2")
+					//// DeepMerge::deep_merge!(hash_params, hash_session, {:knockout_prefix => FIELD_KNOCKOUT_PREFIX, :unpack_arrays => ","})
+					got2, err := MergeWithOptions(hashParams, got, NewConfigDeeperMergeBang().WithDefaultKnockoutPrefix().WithUnpackArrays(","))
+					assert.NoError(t, err, tt.name+" part 2 - merge")
+
+					want2, err := rubyHashToMap(`{"amenity"=>{"id"=>["26","27"]}}`)
+					assert.NoError(t, err, tt.name+" part 2 - want2")
+					assert.Equal(t, want2, got2, "Merge() got = %v, want %v", got2, want2)
+				})
+			}
+		})
+	}
+}
