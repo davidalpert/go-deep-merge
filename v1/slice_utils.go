@@ -1,4 +1,4 @@
-package DeepMerge
+package v1
 
 // toStringSlice converts a slice of unknown types to a slice of their string representations
 func toStringSlice(items []interface{}) []string {

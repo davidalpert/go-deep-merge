@@ -1,4 +1,4 @@
-package DeepMerge
+package v1
 
 import (
 	"fmt"

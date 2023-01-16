@@ -1,0 +1,4 @@
+GPL
+Taskfile
+goconfig
+deep_merge

@@ -1,0 +1,18 @@
+# a local scratch folder for working files
+.local/
+
+# editor files
+.idea/
+
+# build output
+internal/version/detail.go
+bin/
+
+# feature test output
+tmp/
+
+# frontend dependency graph output
+web/app/dependencygraph.svg
+
+# generated changelogs
+CHANGELOG.md
