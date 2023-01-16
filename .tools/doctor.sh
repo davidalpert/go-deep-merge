@@ -170,6 +170,8 @@ if [[ ! "$GITHUB_ACTIONS" == "true" ]]; then
   fi
 fi
 
+findCmd goconvey 'go install github.com/smartystreets/goconvey@latest'
+
 findCmd sbot "go install github.com/restechnica/semverbot/cmd/sbot@v1.0.0"
 if [ ! -f .semverbot.toml ]; then
   note "initializing sbot"
