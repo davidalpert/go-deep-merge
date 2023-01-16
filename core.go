@@ -66,7 +66,7 @@ func deepMerge(src, dest interface{}, o *Config) (interface{}, error) {
 					}
 					d[sk] = r
 				} else {
-					o.writeDebug(" ==>merging over: %#v => %#v :: %#v", sk, sv, d)
+					o.writeDebug(" ==>copying over: %#v => %#v :: %#v", sk, sv, d)
 					// dest[src_key] doesn't exist so we want to create and overwrite it (but we do this via deep_merge!)
 					// note: we rescue here b/c some classes respond to "dup" but don't implement it (Numeric, TrueClass, FalseClass, NilClass among maybe others)
 					// we dup src_value if possible because we're going to merge into it (since dest is empty)
@@ -145,7 +145,7 @@ func deepMerge(src, dest interface{}, o *Config) (interface{}, error) {
 		} else {
 			sourceAllStrings := sliceOfAll(s, isString)
 			var hasNakedNockoutPrefix = false
-			if sourceAllStrings && arraySplitChar != "" {
+			if sourceAllStrings && arraySplitChar != "" && len(s) > 0 {
 				ss := toStringSlice(s)
 				o.writeDebug("split/join on source: %#v", src)
 				ss = strings.Split(strings.Join(ss, arraySplitChar), arraySplitChar)
@@ -164,10 +164,11 @@ func deepMerge(src, dest interface{}, o *Config) (interface{}, error) {
 				// if there's a naked knockout_prefix in source, that means we are to truncate dest
 				if o.KnockoutPrefix != nil && hasNakedNockoutPrefix {
 					d = make([]interface{}, 0)
+					o.writeDebug("source has naked knockout prefix; truncating destination to: %#v", d)
 				}
 
 				destAllStrings := sliceOfAll(s, isString)
-				if destAllStrings && arraySplitChar != "" {
+				if destAllStrings && arraySplitChar != "" && len(d) > 0 {
 					dd := toStringSlice(d)
 					o.writeDebug("split/join on dest: %#v", src)
 					dd = strings.Split(strings.Join(dd, arraySplitChar), arraySplitChar)

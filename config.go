@@ -58,11 +58,11 @@ func NewConfig() *Config {
 }
 
 func NewConfigDeeperMergeKO() *Config {
-	return NewConfig().WithKnockout("--").OverwriteUnmergeable()
+	return NewConfig().WithKnockout("--").WithOverwriteUnmergeables(true)
 }
 
 func NewConfigDeeperMergeBang() *Config {
-	return NewConfig().OverwriteUnmergeable()
+	return NewConfig().WithOverwriteUnmergeables(true)
 }
 
 func NewConfigDeeperMerge() *Config {
@@ -78,8 +78,8 @@ func (c *Config) EnableDebug() *Config {
 	return c.WithDebug(true)
 }
 
-func (c *Config) OverwriteUnmergeable() *Config {
-	c.PreserveUnmergeables = false
+func (c *Config) WithOverwriteUnmergeables(b bool) *Config {
+	c.PreserveUnmergeables = !b
 	return c
 }
 
@@ -125,7 +125,7 @@ func (c *Config) writeDebug(f string, a ...interface{}) {
 }
 
 func (c *Config) copyWithIncreasedDebugIndent() *Config {
-	cc := *c
+	var cc = *c
 	cc.DebugIndent = "  " + c.DebugIndent
 	return &cc
 }
