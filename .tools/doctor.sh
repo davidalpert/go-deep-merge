@@ -177,13 +177,13 @@ findCmd bundle 'gem install bundler'
 
 findCmd goconvey 'go install github.com/smartystreets/goconvey@latest'
 
-findCmd sbot "go install github.com/restechnica/semverbot/cmd/sbot@v1.0.0"
+findCmd sbot "go install github.com/restechnica/semverbot/cmd/sbot@latest"
 if [ ! -f .semverbot.toml ]; then
   note "initializing sbot"
   sbot init
 fi
 
-findCmd conform "go install github.com/talos-systems/conform/cmd/conform@latest"
+findCmd conform "go install github.com/siderolabs/conform/cmd/conform@latest"
 if [ ! -f .conform.yaml ]; then
   note "initializing conform"
   cat << EOD > .conform.yaml
