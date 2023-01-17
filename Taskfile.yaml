@@ -20,11 +20,16 @@ tasks:
       - vale
       - test
       - build
-    
+
   doctor:
     desc: run doctor.sh to sort out development dependencies
     cmds:
       - ./.tools/doctor.sh
+
+  guard:
+    desc: run guard to watch
+    cmds:
+      - bundle exec guard
 
   gen:
     desc: run code-generation

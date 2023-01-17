@@ -78,7 +78,7 @@ function fix {
         echo -e "> $*\n"
         echo "$*" >>_fixes
         ($*)
-        # There needs to be some time for any paper util scripts to do their
+        # There needs to be some time for any util scripts to do their
         # thing. 5 seconds seems to be sufficient.
         sleep 5
         echo -e "\n${GREEN}${BOLD}fix applied.${NORMAL}${NC}"
@@ -169,6 +169,11 @@ if [[ ! "$GITHUB_ACTIONS" == "true" ]]; then
     vale sync
   fi
 fi
+REQUIRED_RUBY_VERSION=`cat .ruby-version`
+findCmd ruby
+grepVersion 'ruby' 'ruby --version' "$REQUIRED_RUBY_VERSION"
+findCmd gem
+findCmd bundle 'gem install bundler'
 
 findCmd goconvey 'go install github.com/smartystreets/goconvey@latest'
 
@@ -224,5 +229,9 @@ fi
 # if we get here clean up any incomplete fixes
 rm -f _fixes
 
-# and a final newline to finish off
+# and install the bundle to enable testing targets
+printf "\n"
+withPadding "installing bundle"
+bundle install --quiet
+echo -e "$pass bundle install complete"
 printf "\n"
