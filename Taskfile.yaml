@@ -13,6 +13,14 @@ tasks:
       - help
     silent: true
 
+  ci:
+    desc: CI task; cleans, run tests, and builds
+    deps:
+      - gen
+      - vale
+      - test
+      - build
+    
   doctor:
     desc: run doctor.sh to sort out development dependencies
     cmds:
