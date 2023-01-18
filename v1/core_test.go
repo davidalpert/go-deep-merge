@@ -1013,6 +1013,13 @@ func TestMergeHashArrays(t *testing.T) {
 			opt:  NewConfigDeeperMergeBang(),
 			want: `{"item" => ""}`,
 		},
+		{
+			name: `Merging config hashes`,
+			src:  `{"log_level": "DEBUG", "env": "dev", "auth": { "password": "dev_pass" } }`,
+			dest: `{"log_level": "WARN", "env": "REQUIRED", "auth": { "username": "default_user", "password": "default_pass" } }`,
+			opt:  NewConfigDeeperMergeBang().WithMergeHashArrays(true),
+			want: `{"log_level": "DEBUG", "env": "dev", "auth": { "username": "default_user", "password": "dev_pass" } }`,
+		},
 	}
 
 	for i, tt := range tests {
