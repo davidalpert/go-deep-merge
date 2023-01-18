@@ -35,6 +35,12 @@ tasks:
     desc: run code-generation
     cmds:
       - go run ./.tools/version_gen.go {{ .PROJECT_NAME }}
+
+  bundle:
+    desc: install ruby gems
+    run: once
+    cmds:
+      - bundle --quiet
   
   vale:
     desc: run linting rules against markdown files
