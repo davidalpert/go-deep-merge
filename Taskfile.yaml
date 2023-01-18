@@ -67,6 +67,22 @@ tasks:
       - goconvey
     silent: true
 
+  features:
+    desc: run acceptance tests
+    deps:
+      - bundle
+      - gen
+    cmds:
+      - bundle exec cucumber --publish-quiet --tags 'not @wip' --tags 'not @ignore'
+
+  features-wip:
+    desc: run wip acceptance tests
+    deps:
+      - bundle
+      - gen
+    cmds:
+      - bundle exec cucumber --publish-quiet --tags '@wip' --tags 'not @ignore'
+
   build:
     desc: build
     run: once
