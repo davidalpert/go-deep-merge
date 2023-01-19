@@ -17,6 +17,8 @@
   <br />
   <a href="./README.md"><strong>README</strong></a>
   ·
+  <a href="./CONTRIBUTING.md">CONTRIBUTING</a>
+  ·
   <a href="./CHANGELOG.md">CHANGELOG</a>
   <br />
   <!-- <a href="https://github.com/davidalpert/goconfig">View Demo</a>
