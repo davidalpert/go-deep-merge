@@ -2,13 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ssm"
-	"github.com/aws/aws-sdk-go/service/ssm/ssmiface"
+	"github.com/davidalpert/go-deep-merge/internal/paramstore"
 	"github.com/davidalpert/go-printers/v1"
 	"github.com/spf13/cobra"
-	"log"
 )
 
 type AwsGetOptions struct {
@@ -60,63 +56,10 @@ func (o *AwsGetOptions) Validate() error {
 	return o.PrinterOptions.Validate()
 }
 
-func Sessions(debug bool) (*session.Session, error) {
-	sess, err := session.NewSession(&aws.Config{
-		CredentialsChainVerboseErrors: aws.Bool(debug),
-	})
-	svc := session.Must(sess, err)
-	return svc, err
-}
-
-// SSM is a SSM API client.
-type SSM struct {
-	client ssmiface.SSMAPI
-}
-
-func NewSSMClient(debug bool) *SSM {
-	// Create AWS Session
-	sess, err := Sessions(debug)
-	if err != nil {
-		log.Println(err)
-		return nil
-	}
-	ssmsvc := &SSM{ssm.New(sess)}
-	// Return SSM client
-	return ssmsvc
-}
-
-type Param struct {
-	Name           string
-	WithDecryption bool
-	ssmsvc         *SSM
-}
-
-//Param creates the struct for querying the param store
-func (s *SSM) Param(name string, decryption bool) *Param {
-	return &Param{
-		Name:           name,
-		WithDecryption: decryption,
-		ssmsvc:         s,
-	}
-}
-
-func (p *Param) GetValue() (string, error) {
-	ssmsvc := p.ssmsvc.client
-	parameter, err := ssmsvc.GetParameter(&ssm.GetParameterInput{
-		Name:           &p.Name,
-		WithDecryption: &p.WithDecryption,
-	})
-	if err != nil {
-		return "", err
-	}
-	value := *parameter.Parameter.Value
-	return value, nil
-}
-
 // Run the command
 func (o *AwsGetOptions) Run() error {
-	ssmsvc := NewSSMClient(o.Debug)
-	result, err := ssmsvc.Param(o.ParameterName, o.Decrypt).GetValue()
+	ssmsvc := paramstore.NewSSMClient(o.Debug)
+	result, err := ssmsvc.GetValue(o.ParameterName, o.Decrypt)
 	if err != nil {
 		return fmt.Errorf("get param %#v: %#v", o.ParameterName, err)
 	}
