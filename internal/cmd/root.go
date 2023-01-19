@@ -66,6 +66,7 @@ func NewRootCmd(ioStreams printers.IOStreams) *cobra.Command {
 	// Register subcommands
 	rootCmd.AddCommand(NewCmdVersion(ioStreams))
 	rootCmd.AddCommand(NewCmdMerge(ioStreams))
+	rootCmd.AddCommand(NewCmdSync(ioStreams))
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", fmt.Sprintf("config file (default is $HOME/.%s/config.yaml)", version.Detail.AppName))
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "enable verbose output")
