@@ -4,8 +4,9 @@ version: '3'
 
 vars:
   PROJECT_NAME: goconfig
-  VERSION:
+  CURRENT_VERSION:
     sh: sbot get version
+  VERSION: '{{ .NEXT_VERSION | default .CURRENT_VERSION }}'
 
 tasks:
   default:
@@ -36,6 +37,8 @@ tasks:
     run: once
     cmds:
       - go run ./.tools/version_gen.go {{ .PROJECT_NAME }}
+    env:
+      VERSION: "{{ .VERSION }}"
 
   bundle:
     desc: install ruby gems

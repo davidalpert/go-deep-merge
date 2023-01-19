@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // This program generates version.go. It can be invoked by running invoking go:generate
@@ -8,14 +9,25 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"text/template"
 	"time"
 )
 
 func main() {
-	versionStem, err := exec.Command("sbot", "get", "version").Output()
+	bumpType := os.Getenv("BUMP_TYPE")
+	versionStem := []byte(os.Getenv("VERSION"))
+	var err error
+	if bumpType != "" {
+		fmt.Println("predicting the next version; mode=", bumpType)
+		versionStem, err = exec.Command("sbot", "predict", "version", "--mode", bumpType).Output()
+	} else if len(versionStem) > 0 {
+		fmt.Println("using provided version:", string(versionStem))
+	} else {
+		versionStem, err = exec.Command("sbot", "get", "version").Output()
+	}
 	if err != nil {
-		fmt.Printf("can't read version from git tags: %s", err)
+		fmt.Printf("can't read version: %s", err)
 		fmt.Printf("defaulting to 0.0.1")
 		versionStem = []byte("0.0.1")
 	}
@@ -23,12 +35,6 @@ func main() {
 	if len(os.Args) < 2 {
 		fmt.Printf("usage: go run .tools/version_gen.go <appName>\n\nrun from project root")
 		os.Exit(1)
-	}
-
-	gitBranch, err := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD").Output()
-	//fmt.Printf("branch: >%s< (err: %#v)\n", string(gitBranch), err)
-	if err != nil {
-		panic(err)
 	}
 
 	gitSHA, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output()
@@ -54,6 +60,28 @@ func main() {
 
 	var isDirty = hasStaged || hasModified || hasUntracked
 
+	gitBranch, err := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD").Output()
+	//fmt.Printf("branch: >%s< (err: %#v)\n", string(gitBranch), err)
+	if err != nil {
+		panic(err)
+	}
+	gitBranch = bytes.Trim(gitBranch, "\r\n")
+
+	commitsBetweenHeadAndMain, err := exec.Command("git", "rev-list", "origin/main...HEAD").Output()
+	if err != nil {
+		panic(err)
+	}
+	if !isDirty && !strings.EqualFold(string(gitBranch), "main") && len(commitsBetweenHeadAndMain) == 0 {
+		fmt.Printf("no difference between '%s' and origin/main; replacing '%s' with 'main'\n", string(gitBranch), string(gitBranch))
+		gitBranch = []byte("main")
+	}
+	summary := []byte(os.Getenv("RELEASE_COMMIT_MESSAGE"))
+	if len(summary) == 0 {
+		summary, err = exec.Command("git", "log", "-1", "--pretty=%s").Output()
+		if err != nil {
+			panic(err)
+		}
+	}
 	_, err = exec.Command("mkdir", "-p", "./internal/version").Output()
 	if err != nil {
 		panic(err)
@@ -66,27 +94,75 @@ func main() {
 	}
 	defer f.Close()
 
+	coreVersion := string(bytes.Trim(versionStem, "\r\n"))
+	branchName := string(bytes.Trim(gitBranch, "\r\n"))
+	sha := string(bytes.Trim(gitSHA, "\r\n"))
+	semver := generateSemanticVersion(coreVersion, branchName, sha, isDirty)
+
 	packageTemplate.Execute(f, struct {
 		AppName      string
-		Version      string
-		Branch       string
-		SHA          string
-		HasStaged    bool
-		HasModified  bool
-		HasUntracked bool
-		IsDirty      bool
-		Timestamp    time.Time
+		CoreVersion     string
+		CommitSummary   string
+		BranchName      string
+		SHA             string
+		IsDirty         bool
+		HasStaged       bool
+		HasModified     bool
+		HasUntracked    bool
+		SemanticVersion string
+		Timestamp       time.Time
 	}{
-		AppName:      os.Args[1],
-		Version:      string(bytes.Trim(versionStem, "\r\n")),
-		Branch:       string(bytes.Trim(gitBranch, "\r\n")),
-		SHA:          string(bytes.Trim(gitSHA, "\r\n")),
-		HasStaged:    hasStaged,
-		HasModified:  hasModified,
-		HasUntracked: hasUntracked,
-		IsDirty:      isDirty,
-		Timestamp:    time.Now(),
+		AppName:         os.Args[1],
+		CoreVersion:     coreVersion,
+		CommitSummary:   string(bytes.Trim(summary, "\r\n")),
+		BranchName:      branchName,
+		IsDirty:         isDirty,
+		HasStaged:       hasStaged,
+		HasModified:     hasModified,
+		HasUntracked:    hasUntracked,
+		SemanticVersion: semver,
+		SHA:             sha,
+		Timestamp:       time.Now(),
 	})
+}
+
+func generateSemanticVersion(coreVersion string, branchName string, gitSHA string, dirty bool) string {
+	v := coreVersion
+	usedBranchName := false
+
+	// append preReleaseIdentifier if needed
+	if strings.EqualFold(branchName, "main") {
+		usedBranchName = true
+	} else {
+		preReleaseIdentifier := "alpha"
+		if strings.HasPrefix(branchName, "release-") {
+			preReleaseIdentifier = branchNameToBuildMetadataSegment(branchName[len("release-"):])
+			usedBranchName = true
+		} else if strings.HasPrefix(branchName, "rc") {
+			preReleaseIdentifier = branchName
+			usedBranchName = true
+		}
+		v = v + "-" + preReleaseIdentifier
+	}
+
+	// append build metadata: SHA
+	v += "+" + gitSHA
+
+	// add branch name (unless used as a pre-release identifier)
+	if !usedBranchName {
+		v += "." + branchNameToBuildMetadataSegment(branchName)
+	}
+
+	// add dirty flag if needed
+	if dirty {
+		v += ".dirty"
+	}
+
+	return v
+}
+
+func branchNameToBuildMetadataSegment(name string) string {
+	return strings.Replace(name, "_", "-", -1)
 }
 
 var packageTemplate = template.Must(template.New("").Parse(`// Code generated by go generate; DO NOT EDIT.
@@ -101,12 +177,38 @@ import (
 	"strings"
 )
 
+// Detail provides an easy global way to
+var Detail = NewVersionDetail()
+
+// NewVersionDetail builds a new version DetailStruct
+func NewVersionDetail() DetailStruct {
+	s := DetailStruct{
+		AppName:              "{{ .AppName }}",
+		BuildDate:            "{{ .Timestamp }}",
+		CoreVersion:          "{{ .CoreVersion }}",
+		GitBranch:            "{{ .BranchName }}",
+		GitCommit:            "{{ .SHA }}",
+		GitCommitSummary:     "{{ .CommitSummary }}",
+		GitDirty:             {{ .IsDirty }},
+		GitDirtyHasModified:  {{ .HasModified }},
+		GitDirtyHasStaged:    {{ .HasStaged }},
+		GitDirtyHasUntracked: {{ .HasUntracked }},
+		Version:              "{{ .SemanticVersion }}",
+	}
+	s.UserAgentString = s.ToUserAgentString()
+	if s.GitDirty {
+		s.GitWorkingState = "dirty"
+	}
+	return s
+}
 // DetailStruct provides an easy way to grab all the govvv version details together
 type DetailStruct struct {
 	AppName              string ` + "`json:\"app_name\"`" + `
 	BuildDate            string ` + "`json:\"build_date\"`" + `
+	CoreVersion          string ` + "`json:\"core_version\"`" + `
 	GitBranch            string ` + "`json:\"branch\"`" + `
 	GitCommit            string ` + "`json:\"commit\"`" + `
+	GitCommitSummary     string ` + "`json:\"commit_summary\"`" + `
 	GitDirty             bool ` + "`json:\"dirty\"`" + `
 	GitDirtyHasModified  bool ` + "`json:\"dirty_modified\"`" + `
 	GitDirtyHasStaged    bool ` + "`json:\"dirty_staged\"`" + `
@@ -117,47 +219,20 @@ type DetailStruct struct {
 	Version              string ` + "`json:\"version\"`" + `
 }
 
-// NewVersionDetail builds a new version DetailStruct
-func NewVersionDetail() DetailStruct {
-	s := DetailStruct{
-		AppName:              "{{ .AppName }}",
-		BuildDate:            "{{ .Timestamp }}",
-		GitBranch:            "{{ .Branch }}",
-		GitCommit:            "{{ .SHA }}",
-		GitDirty:             {{ .IsDirty }},
-		GitDirtyHasModified:  {{ .HasModified }},
-		GitDirtyHasStaged:    {{ .HasStaged }},
-		GitDirtyHasUntracked: {{ .HasUntracked }},
-		GitSummary:           "{{ .Timestamp }}",
-		GitWorkingState:      "",
-		Version:              "{{ .Version }}",
+// String implements Stringer
+func (d *DetailStruct) String() string {
+	if d == nil {
+		return "n/a"
 	}
-	s.UserAgentString = s.ToUserAgentString()
-	if s.GitDirty {
-		s.GitWorkingState = "dirty"
-	}
-	return s
+	return fmt.Sprintf("%s %s", d.AppName, d.Version)
 }
-
-// Detail provides an easy global way to
-var Detail = NewVersionDetail()
 
 // ToUserAgentString formats a DetailStruct as a User-Agent string
 func (s DetailStruct) ToUserAgentString() string {
 	productName := s.AppName
 	productVersion := s.Version
 
-	productDetails := map[string]string{
-		"sha": s.GitCommit,
-	}
-
-	if s.GitBranch != "main" {
-		productDetails["branch"] = s.GitBranch
-	}
-
-	if s.GitDirty {
-		productDetails["dirty"] = "true"
-	}
+	productDetails := map[string]string{ }
 
 	user, err := user.Current()
 	if err == nil {
@@ -165,8 +240,6 @@ func (s DetailStruct) ToUserAgentString() string {
 		if username == "" {
 			username = "unknown"
 		}
-
-		productDetails["user"] = username // strings.Replace(user.Username, "a-", 1) // this is a northfield convention
 	}
 
 	detailParts := []string{}
