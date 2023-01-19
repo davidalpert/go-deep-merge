@@ -72,6 +72,8 @@ tasks:
     deps:
       - bundle
       - gen
+      - test
+      - build
     cmds:
       - bundle exec cucumber --publish-quiet --tags 'not @wip' --tags 'not @ignore'
 
@@ -80,6 +82,8 @@ tasks:
     deps:
       - bundle
       - gen
+      - test
+      - build
     cmds:
       - bundle exec cucumber --publish-quiet --tags '@wip' --tags 'not @ignore'
 
