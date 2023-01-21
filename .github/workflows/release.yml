@@ -82,14 +82,11 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: 1.16
-
-      - name: Setup Ruby, JRuby and TruffleRuby # for integration testing
-        uses: ruby/setup-ruby@v1.117.0
-        with:
-          ruby-version: 3.0.2
+        continue_on_error: false
 
       - name: Install Task
         uses: arduino/setup-task@v1
+        continue_on_error: false
 
       - name: Install dependencies
         run: |
@@ -98,10 +95,12 @@ jobs:
       - name: Unit tests
         run: |
           task test
+        continue_on_error: false
 
       - name: Generate release notes
         run: |
           task preview-release-notes
+        continue_on_error: false
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v3
@@ -114,3 +113,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Your GoReleaser Pro key, if you are using the 'goreleaser-pro' distribution
           # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
+        continue_on_error: false
