@@ -11,17 +11,10 @@ builds:
     #
     # Default is `.`.
   - main: ./cmd/goconfig
-
     # Binary name.
     # Can be a path (e.g. `bin/app`) to wrap the binary in a directory.
     # Default is the name of the project directory.
     binary: goconfig
-
-    # Set a specific go binary to use when building.
-    # It is safe to ignore this option in most cases.
-    #
-    # Default is "go"
-    gobinary: "go1.16"
     env:
       - CGO_ENABLED=0
     goos:
