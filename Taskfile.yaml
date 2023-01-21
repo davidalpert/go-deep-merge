@@ -39,6 +39,8 @@ tasks:
       - go run ./.tools/version_gen.go {{ .PROJECT_NAME }}
     env:
       VERSION: "{{ .VERSION }}"
+    status:
+      - grep "\"{{ .VERSION }}\"" internal/version/detail.go
 
   bundle:
     desc: install ruby gems
