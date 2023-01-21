@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/davidalpert/go-deep-merge/internal/app"
-	"github.com/davidalpert/go-deep-merge/internal/paramstore"
+	"github.com/davidalpert/go-deep-merge/internal/providers"
+	"github.com/davidalpert/go-deep-merge/internal/providers/paramstore"
 	"github.com/davidalpert/go-printers/v1"
 	"github.com/spf13/cobra"
 	"sort"
@@ -12,7 +12,7 @@ import (
 
 type GetOptions struct {
 	*printers.PrinterOptions
-	Client       app.ConfigProvider
+	Provider     providers.Interface
 	ProviderName string
 	Key          string
 	Debug        bool
@@ -57,8 +57,8 @@ func (o *GetOptions) Complete(cmd *cobra.Command, args []string) error {
 	o.ProviderName = args[0]
 
 	// providers-by-key pattern
-	//supportedProviders := map[string]func() app.ConfigProvider{
-	//	"aws": func() app.ConfigProvider { return paramstore.NewSSMClient(o.Debug) },
+	//supportedProviders := map[string]func() app.Interface{
+	//	"aws": func() app.Interface { return paramstore.NewSSMClient(o.Debug) },
 	//}
 	//
 	//supportedProviderKeys := make([]string, 0)
@@ -68,7 +68,7 @@ func (o *GetOptions) Complete(cmd *cobra.Command, args []string) error {
 	//sort.Strings(supportedProviderKeys)
 	//
 	//if clientFunc, ok := supportedProviders[o.ProviderName]; ok {
-	//	o.Client = clientFunc()
+	//	o.Provider = clientFunc()
 	//} else {
 	//	return fmt.Errorf("unrecognized provider %#v; supported providers are: %#v", o.ProviderName, strings.Join(supportedProviderKeys, ", "))
 	//}
@@ -77,7 +77,7 @@ func (o *GetOptions) Complete(cmd *cobra.Command, args []string) error {
 	supportedProviderNames := []string{"aws"}
 	sort.Strings(supportedProviderNames)
 	if strings.EqualFold(o.ProviderName, "aws") {
-		o.Client = paramstore.NewSSMClient(o.Debug)
+		o.Provider = paramstore.NewSSMClient(o.Debug)
 	} else {
 		return fmt.Errorf("unrecognized provider %#v; supported providers are: %#v", o.ProviderName, strings.Join(supportedProviderNames, ", "))
 	}
@@ -100,7 +100,7 @@ func (o *GetOptions) Run() error {
 }
 
 func (o *GetOptions) getMany() error {
-	result, err := o.Client.GetValueTree(o.Key)
+	result, err := o.Provider.GetValueTree(o.Key)
 
 	if err != nil {
 		return fmt.Errorf("get many %s %#v: %#v", o.ProviderName, o.Key, err)
@@ -110,7 +110,7 @@ func (o *GetOptions) getMany() error {
 }
 
 func (o *GetOptions) getOne() error {
-	result, err := o.Client.GetValue(o.Key)
+	result, err := o.Provider.GetValue(o.Key)
 	if err != nil {
 		return fmt.Errorf("get %s %#v: %#v", o.ProviderName, o.Key, err)
 	}
