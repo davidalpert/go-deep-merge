@@ -160,7 +160,7 @@ findCmd task 'go install github.com/go-task/task/v3/cmd/task@latest'
 
 findCmd jq '' 'https://stedolan.github.io/jq/download/'
 
-# HACK: the following validations are handled by separate actions when run as part of an action workflow
+# HACK: the following tools are handled by separate actions when run as part of an action workflow
 if [[ ! "$GITHUB_ACTIONS" == "true" ]]; then
   # TODO: move to a script
   # findCmd vale 'wget https://github.com/errata-ai/vale/releases/download/v2.15.4/vale_2.15.4_Linux_64-bit.tar.gz --directory-prefix=.tmp/ && tar -xvzf ./tmp/vale_2.15.4_Linux_64-bit.tar.gz -C /usr/local/bin'
@@ -168,6 +168,8 @@ if [[ ! "$GITHUB_ACTIONS" == "true" ]]; then
   if [[ ! -d .styles ]]; then
     vale sync
   fi
+
+  findCmd goreleaser "go install github.com/goreleaser/goreleaser@latest"
 fi
 
 findCmd goconvey 'go install github.com/smartystreets/goconvey@latest'
@@ -220,8 +222,6 @@ if [ ! -f .chglog/config.yml ]; then
   note "initializing git-chglog"
   git-chglog --init
 fi
-
-findCmd goreleaser "go install github.com/goreleaser/goreleaser@latest"
 
 # if we get here clean up any incomplete fixes
 rm -f _fixes
