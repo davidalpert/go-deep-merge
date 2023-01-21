@@ -95,11 +95,15 @@ jobs:
       - name: Unit tests
         run: |
           task test
+        env:
+          SKIP_GEN: true
         continue_on_error: false
 
       - name: Generate release notes
         run: |
           task preview-release-notes
+        env:
+          SKIP_GEN: true
         continue_on_error: false
 
       - name: Run GoReleaser

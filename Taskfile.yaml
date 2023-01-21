@@ -40,7 +40,8 @@ tasks:
     env:
       VERSION: "{{ .VERSION }}"
     status:
-      - grep "\"{{ .VERSION }}\"" internal/version/detail.go
+      # - grep "\"{{ .VERSION }}\"" internal/version/detail.go
+      - '[[ -n $SKIP_GEN ]]'
 
   bundle:
     desc: install ruby gems
