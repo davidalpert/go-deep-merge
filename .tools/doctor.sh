@@ -169,11 +169,6 @@ if [[ ! "$GITHUB_ACTIONS" == "true" ]]; then
     vale sync
   fi
 fi
-REQUIRED_RUBY_VERSION=`cat .ruby-version`
-findCmd ruby
-grepVersion 'ruby' 'ruby --version' "$REQUIRED_RUBY_VERSION"
-findCmd gem
-findCmd bundle 'gem install bundler'
 
 findCmd goconvey 'go install github.com/smartystreets/goconvey@latest'
 
@@ -231,7 +226,12 @@ findCmd goreleaser "go install github.com/goreleaser/goreleaser@latest"
 # if we get here clean up any incomplete fixes
 rm -f _fixes
 
-# and install the bundle to enable testing targets
+# and install ruby/bundler/bundle to enable testing targets
+REQUIRED_RUBY_VERSION=`cat .ruby-version`
+findCmd ruby
+grepVersion 'ruby' 'ruby --version' "$REQUIRED_RUBY_VERSION"
+findCmd gem
+findCmd bundle 'gem install bundler'
 printf "\n"
 withPadding "installing bundle"
 bundle install --quiet
