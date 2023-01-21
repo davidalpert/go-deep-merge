@@ -83,6 +83,11 @@ jobs:
         with:
           go-version: 1.16
 
+      - name: Setup Ruby, JRuby and TruffleRuby # for integration testing
+        uses: ruby/setup-ruby@v1.117.0
+        with:
+          ruby-version: 3.0.2
+
       - name: Install Task
         uses: arduino/setup-task@v1
 
