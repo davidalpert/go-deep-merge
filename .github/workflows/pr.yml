@@ -50,16 +50,16 @@ jobs:
     - name: Validate build dependencies
       run: |
         ./.tools/doctor.sh
-      continue_on_error: false
+      continue-on-error: false
 
     - name: Unit tests
       run: |
         task test
-      continue_on_error: false
+      continue-on-error: false
 
     - name: "Features"
       env:
         REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         task features | reviewdog -name=features -fail-on-error=true -efm="cucumber %f:%l # Scenario: %m" -diff="git diff FETCH_HEAD" -filter-mode=nofilter -reporter=github-pr-check -tee
-      continue_on_error: false
+      continue-on-error: false

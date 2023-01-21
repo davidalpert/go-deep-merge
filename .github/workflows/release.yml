@@ -95,14 +95,14 @@ jobs:
           task test
         env:
           SKIP_GEN: true
-        continue_on_error: false
+        continue-on-error: false
 
       - name: Generate release notes
         run: |
           task preview-release-notes
         env:
           SKIP_GEN: true
-        continue_on_error: false
+        continue-on-error: false
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v3
