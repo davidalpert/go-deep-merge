@@ -107,7 +107,7 @@ tasks:
   preview-release-notes:
     desc: preview release notes (generates RELEASE_NOTES.md)
     cmds:
-      - git-chglog --output RELEASE_NOTES.md --template .chglog/RELEASE_NOTES.tpl.md "v{{ .NEXT_VERSION }}"
+      - git-chglog --output RELEASE_NOTES.md --template .chglog/RELEASE_NOTES.tpl.md "v{{ .VERSION }}"
 
   release:
     cmds:
