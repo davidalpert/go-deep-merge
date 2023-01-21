@@ -16,11 +16,6 @@ type MergeOptions struct {
 	Debug        bool
 }
 
-type MergeResult struct {
-	AppDir      string
-	MergeBySlug map[string]map[string]interface{}
-}
-
 // Merge merges a source folder of config files grouped by app
 // assuming that each app folder contains a default.yaml and one or more
 // slug.yaml (e.g. dev.yaml, prd.yaml, etc)

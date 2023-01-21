@@ -9,17 +9,18 @@ import (
 	"log"
 )
 
-func Sessions(debug bool) (*session.Session, error) {
+func Sessions(region string, debug bool) (*session.Session, error) {
 	sess, err := session.NewSession(&aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(debug),
+		Region:                        aws.String(region),
 	})
 	svc := session.Must(sess, err)
 	return svc, err
 }
 
-func NewSSMClient(debug bool) *Client {
+func NewSSMClient(region string, debug bool) *Client {
 	// Create AWS Session
-	sess, err := Sessions(debug)
+	sess, err := Sessions(region, debug)
 	if err != nil {
 		log.Println(err)
 		return nil
@@ -75,4 +76,29 @@ func (s *Client) GetValueTree(prefix string) (map[string]string, error) {
 	}
 
 	return result, nil
+}
+
+func (s *Client) SetValue(key, value string) error {
+	input := ssm.PutParameterInput{
+		AllowedPattern: nil,
+		DataType:       aws.String("text"),
+		Description:    nil,
+		KeyId:          nil,
+		Name:           aws.String(key),
+		Overwrite:      nil,
+		Policies:       nil,
+		Tags: []*ssm.Tag{
+			{Key: aws.String("managed_by"), Value: aws.String("goconfig")},
+		},
+		Tier:  nil,
+		Type:  aws.String("String"),
+		Value: aws.String(value),
+	}
+
+	_, err := s.client.PutParameter(&input)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

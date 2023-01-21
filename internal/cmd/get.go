@@ -2,21 +2,17 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/davidalpert/go-deep-merge/internal/providers"
-	"github.com/davidalpert/go-deep-merge/internal/providers/paramstore"
+	"github.com/davidalpert/go-deep-merge/internal/cfgset"
+	"github.com/davidalpert/go-deep-merge/internal/provider"
 	"github.com/davidalpert/go-printers/v1"
 	"github.com/spf13/cobra"
-	"sort"
-	"strings"
 )
 
 type GetOptions struct {
 	*printers.PrinterOptions
-	Provider     providers.Interface
-	ProviderName string
-	Key          string
-	Debug        bool
-	Recursive    bool
+	provider.Options
+	Key       string
+	Recursive bool
 	//DecryptResult bool
 }
 
@@ -32,7 +28,7 @@ func NewCmdGet(ioStreams printers.IOStreams) *cobra.Command {
 		Use:     "get <provider> <path>",
 		Short:   "get a config value",
 		Aliases: []string{"g"},
-		Args:    cobra.ExactArgs(2),
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := o.Complete(cmd, args); err != nil {
 				return err
@@ -45,8 +41,8 @@ func NewCmdGet(ioStreams printers.IOStreams) *cobra.Command {
 	}
 
 	o.PrinterOptions.AddPrinterFlags(cmd.Flags())
-	//cmd.Flags().BoolVar(&o.Decrypt, "decrypt", false, "decrypt result?")
-	cmd.Flags().BoolVarP(&o.Debug, "debug", "d", false, "debug")
+	o.Options.AddProviderOptions(cmd.Flags())
+	cmd.Flags().BoolVarP(&o.Debug, "debug", "d", false, "enable debug output")
 	cmd.Flags().BoolVarP(&o.Recursive, "recursive", "r", false, "recursively get all values under that path")
 
 	return cmd
@@ -55,33 +51,17 @@ func NewCmdGet(ioStreams printers.IOStreams) *cobra.Command {
 // Complete the options
 func (o *GetOptions) Complete(cmd *cobra.Command, args []string) error {
 	o.ProviderName = args[0]
-
-	// providers-by-key pattern
-	//supportedProviders := map[string]func() app.Interface{
-	//	"aws": func() app.Interface { return paramstore.NewSSMClient(o.Debug) },
-	//}
-	//
-	//supportedProviderKeys := make([]string, 0)
-	//for k, _ := range supportedProviders {
-	//	supportedProviderKeys = append(supportedProviderKeys, k)
-	//}
-	//sort.Strings(supportedProviderKeys)
-	//
-	//if clientFunc, ok := supportedProviders[o.ProviderName]; ok {
-	//	o.Provider = clientFunc()
-	//} else {
-	//	return fmt.Errorf("unrecognized provider %#v; supported providers are: %#v", o.ProviderName, strings.Join(supportedProviderKeys, ", "))
-	//}
-
-	// providers-as-list pattern
-	supportedProviderNames := []string{"aws"}
-	sort.Strings(supportedProviderNames)
-	if strings.EqualFold(o.ProviderName, "aws") {
-		o.Provider = paramstore.NewSSMClient(o.Debug)
+	if p, err := provider.New(o.Options); err != nil {
+		return fmt.Errorf("building provider: %#v", err)
 	} else {
-		return fmt.Errorf("unrecognized provider %#v; supported providers are: %#v", o.ProviderName, strings.Join(supportedProviderNames, ", "))
+		o.Provider = p
 	}
-	o.Key = args[1]
+
+	if len(args) > 1 {
+		o.Key = args[1]
+	} else {
+		o.Key = "/"
+	}
 
 	return nil
 }
@@ -93,27 +73,25 @@ func (o *GetOptions) Validate() error {
 
 // Run the command
 func (o *GetOptions) Run() error {
+	flattened := map[string]string{}
 	if o.Recursive {
-		return o.getMany()
-	}
-	return o.getOne()
-}
-
-func (o *GetOptions) getMany() error {
-	result, err := o.Provider.GetValueTree(o.Key)
-
-	if err != nil {
-		return fmt.Errorf("get many %s %#v: %#v", o.ProviderName, o.Key, err)
-	}
-
-	return o.WriteOutput(result)
-}
-
-func (o *GetOptions) getOne() error {
-	result, err := o.Provider.GetValue(o.Key)
-	if err != nil {
-		return fmt.Errorf("get %s %#v: %#v", o.ProviderName, o.Key, err)
+		if many, err := o.Provider.GetValueTree(o.Key); err != nil {
+			return err
+		} else {
+			for k, v := range many {
+				flattened[k] = v
+			}
+		}
+	} else {
+		if one, err := o.Provider.GetValue(o.Key); err != nil {
+			return err
+		} else {
+			flattened[o.Key] = one
+		}
 	}
 
-	return o.WriteOutput(result)
+	if o.FormatCategory() == "text" {
+		return o.WriteOutput(cfgset.FlattenedToString(flattened))
+	}
+	return o.WriteOutput(flattened)
 }

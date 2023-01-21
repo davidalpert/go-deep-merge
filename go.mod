@@ -6,6 +6,7 @@ require (
 	github.com/aws/aws-sdk-go v1.44.182 // indirect
 	github.com/davidalpert/go-printers v0.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/onsi/ginkgo/v2 v2.7.0 // indirect
 	github.com/onsi/gomega v1.24.2 // indirect
 	github.com/sirupsen/logrus v1.8.1

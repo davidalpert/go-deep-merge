@@ -16,6 +16,7 @@ func NewCmdSync(ioStreams printers.IOStreams) *cobra.Command {
 	//cmd.AddCommand(NewCmdSyncAWSParameterStore(ioStreams))
 	//cmd.AddCommand(NewCmdSyncConsul(ioStreams))
 	cmd.AddCommand(NewCmdSyncFolder(ioStreams))
+	cmd.AddCommand(NewCmdSyncProvider(ioStreams))
 
 	return cmd
 }
