@@ -82,11 +82,9 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: 1.16
-        continue_on_error: false
 
       - name: Install Task
         uses: arduino/setup-task@v1
-        continue_on_error: false
 
       - name: Install dependencies
         run: |
@@ -117,4 +115,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Your GoReleaser Pro key, if you are using the 'goreleaser-pro' distribution
           # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
-        continue_on_error: false
