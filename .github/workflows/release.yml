@@ -90,9 +90,9 @@ jobs:
         run: |
           ./.tools/doctor.sh
 
-    - name: Unit tests
-      run: |
-        task test
+      - name: Unit tests
+        run: |
+          task test
 
       - name: Generate release notes
         run: |
