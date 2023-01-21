@@ -88,7 +88,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          ./.tools/doctor.sh
+          go install github.com/restechnica/semverbot/cmd/sbot@latest
+          go install github.com/git-chglog/git-chglog/cmd/git-chglog@v0.15.1
 
       - name: Unit tests
         run: |
