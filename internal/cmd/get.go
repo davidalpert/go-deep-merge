@@ -16,6 +16,7 @@ type GetOptions struct {
 	ProviderName string
 	Key          string
 	Debug        bool
+	Recursive    bool
 	//DecryptResult bool
 }
 
@@ -46,6 +47,7 @@ func NewCmdGet(ioStreams printers.IOStreams) *cobra.Command {
 	o.PrinterOptions.AddPrinterFlags(cmd.Flags())
 	//cmd.Flags().BoolVar(&o.Decrypt, "decrypt", false, "decrypt result?")
 	cmd.Flags().BoolVarP(&o.Debug, "debug", "d", false, "debug")
+	cmd.Flags().BoolVarP(&o.Recursive, "recursive", "r", false, "recursively get all values under that path")
 
 	return cmd
 }
@@ -91,7 +93,20 @@ func (o *GetOptions) Validate() error {
 
 // Run the command
 func (o *GetOptions) Run() error {
+	if o.Recursive {
+		return o.getMany()
+	}
 	return o.getOne()
+}
+
+func (o *GetOptions) getMany() error {
+	result, err := o.Client.GetValueTree(o.Key)
+
+	if err != nil {
+		return fmt.Errorf("get many %s %#v: %#v", o.ProviderName, o.Key, err)
+	}
+
+	return o.WriteOutput(result)
 }
 
 func (o *GetOptions) getOne() error {

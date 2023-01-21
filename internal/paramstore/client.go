@@ -44,3 +44,35 @@ func (s *Client) GetValue(name string) (string, error) {
 	value := *parameter.Parameter.Value
 	return value, nil
 }
+
+func (s *Client) GetValueTree(prefix string) (map[string]string, error) {
+	input := ssm.GetParametersByPathInput{}
+	input.SetPath(prefix)
+	input.SetRecursive(true)
+
+	// get first page
+	output, err := s.client.GetParametersByPath(&input)
+	if err != nil {
+		return nil, fmt.Errorf("get value tree %#v: %#v", prefix, err)
+	}
+
+	// get remaining pages (if any)
+	parameters := output.Parameters
+	for output.NextToken != nil {
+		input.SetNextToken(*output.NextToken)
+		output, err = s.client.GetParametersByPath(&input)
+		if err != nil {
+			return nil, fmt.Errorf("get value tree %#v: %#v", prefix, err)
+		}
+		parameters = append(parameters, output.Parameters...)
+	}
+
+	result := make(map[string]string)
+	for _, p := range parameters {
+		if p != nil {
+			result[*p.Name] = *p.Value
+		}
+	}
+
+	return result, nil
+}
