@@ -3,7 +3,7 @@ module github.com/davidalpert/go-deep-merge
 go 1.16
 
 require (
-	github.com/aws/aws-sdk-go v1.44.191
+	github.com/aws/aws-sdk-go v1.44.211
 	github.com/davidalpert/go-printers v0.3.0
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5
